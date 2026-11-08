@@ -1,0 +1,577 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Wohnungsplaner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: eine ruhige Spalte. Reiter oben, darunter die aktive Liste, bei Preislisten endet sie mit einer Summenzeile wie auf einem Kassenbon. */
+:root {
+  --bg: #F2F4F6;
+  --surface: #FFFFFF;
+  --sunken: #E8ECF0;
+  --fg: #17222D;
+  --muted: #5A6978;
+  --line: #D5DCE3;
+  --accent: #1D5FC4;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #E3EDFB;
+  --ok: #1E7A4F;
+  --ok-soft: #DFF2E8;
+  --danger: #B3261E;
+  --f-display: 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171E; --surface: #19212A; --sunken: #232D38; --fg: #E6ECF2; --muted: #93A1AF; --line: #2D3945;
+    --accent: #6EA3FF; --accent-fg: #0B1522; --accent-soft: #1E2F49; --ok: #5CC796; --ok-soft: #173126; --danger: #FF8A80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171E; --surface: #19212A; --sunken: #232D38; --fg: #E6ECF2; --muted: #93A1AF; --line: #2D3945;
+  --accent: #6EA3FF; --accent-fg: #0B1522; --accent-soft: #1E2F49; --ok: #5CC796; --ok-soft: #173126; --danger: #FF8A80;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.45;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+*, *::before, *::after { box-sizing: border-box; }
+.wrap { max-width: none; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+header h1 {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 5vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+header p { margin: 6px 0 0; color: var(--muted); }
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Reiter */
+.tabbar { display: flex; align-items: flex-end; gap: 8px; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; gap: 2px; overflow-x: auto; min-width: 0; flex: 1; scrollbar-width: thin; }
+.tab {
+  background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
+  padding: 10px 14px 9px; white-space: nowrap; color: var(--muted); font-weight: 500;
+  display: inline-flex; align-items: baseline; gap: 8px; font-size: 1.15rem;
+}
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+.tab .n { font-family: var(--f-mono); font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] .n { color: var(--accent); }
+.addtab {
+  background: none; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted);
+  padding: 6px 10px; margin-bottom: 6px; white-space: nowrap; font-size: 0.9rem;
+}
+.addtab:hover { color: var(--fg); border-color: var(--muted); }
+
+/* Panel */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.panel-head h2 { font-family: var(--f-display); font-size: 1.5rem; line-height: 1.15; margin: 0; letter-spacing: -0.01em; }
+.meta { color: var(--muted); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--ok); width: 0; transition: width .25s ease; }
+@media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+
+.menu summary { cursor: pointer; color: var(--muted); font-size: 0.88rem; width: max-content; }
+.menu summary:hover { color: var(--fg); }
+.menu-body { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding: 12px; background: var(--sunken); border-radius: 8px; }
+.menu-body input[type=text] { flex: 1 1 200px; min-width: 0; }
+
+.field, .menu-body input, .newlist input, .newlist select {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; min-height: 42px; min-width: 0;
+}
+.field:focus, .menu-body input:focus, .newlist input:focus, .newlist select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 9px 14px; min-height: 42px; font-weight: 500; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--danger); }
+.btn.small { min-height: 34px; padding: 5px 10px; font-size: 0.9rem; }
+
+/* Hinzufuegen */
+.addform { display: grid; gap: 8px; grid-template-columns: 1fr auto; }
+.addform.preis { grid-template-columns: 1fr 5rem 7.5rem auto; }
+.addform .field { width: 100%; }
+.addform .num { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .addform.preis { grid-template-columns: 1fr 1fr; }
+  .addform.preis #add-text { grid-column: 1 / -1; }
+  .addform.preis button { grid-column: 1 / -1; }
+}
+
+.search { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.search .field { flex: 1 1 260px; width: auto; }
+.note { padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 0.92rem; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.note.warn { background: var(--sunken); color: var(--muted); }
+
+/* Zeilen */
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.row { display: grid; align-items: center; gap: 6px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row.check { grid-template-columns: 1.75rem minmax(0, 1fr) auto; grid-template-areas: "chk name del"; }
+.row.check .txt { grid-area: name; }
+.row.preis {
+  grid-template-columns: 1.75rem minmax(0, 1fr) 4.5rem 7rem 7rem auto;
+  grid-template-areas: "chk name qty price sum del";
+}
+.row .chk { width: 1.25rem; height: 1.25rem; accent-color: var(--ok); margin: 0; justify-self: center; }
+.row .txt { background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 8px 8px; min-width: 0; width: 100%; font-size: 1.2rem; line-height: 1.35; }
+.row textarea.txt { resize: none; overflow: hidden; display: block; font-family: inherit; white-space: nowrap; }
+.row .txt:hover { border-color: var(--line); }
+.row .txt:focus { border-color: var(--accent); outline: none; background: var(--surface); }
+.row.done .txt.name, .row.check.done .txt { text-decoration: line-through; color: var(--muted); }
+.row .del { background: none; border: 0; color: var(--muted); border-radius: 6px; width: 34px; height: 34px; font-size: 1.2rem; line-height: 1; }
+.row .del:hover { color: var(--danger); background: var(--sunken); }
+.cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cell .cap { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-left: 9px; }
+.cell .txt.num { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+.cell .sum { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; padding: 8px 8px; font-size: 0.94rem; white-space: nowrap; }
+.c-chk { grid-area: chk; } .c-name { grid-area: name; } .c-qty { grid-area: qty; } .c-price { grid-area: price; } .c-sum { grid-area: sum; } .c-del { grid-area: del; }
+.ex { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+@media (max-width: 620px) {
+  .row.preis {
+    grid-template-columns: 1.75rem 4.2rem minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "chk name name del" ". qty price sum";
+    padding: 10px 0;
+  }
+  .c-del { justify-self: end; }
+}
+
+.empty { padding: 28px 8px; text-align: center; color: var(--muted); }
+.empty strong { display: block; color: var(--fg); font-family: var(--f-display); font-size: 1.15rem; margin-bottom: 4px; }
+.empty .btn { margin-top: 14px; }
+
+/* Summe */
+.total { border-top: 2px solid var(--fg); padding-top: 14px; display: grid; gap: 8px 24px; grid-template-columns: 1fr auto; align-items: end; }
+.total .lbl { font-family: var(--f-display); font-weight: 700; font-size: 1.2rem; }
+.total .big { font-family: var(--f-mono); font-weight: 500; font-size: clamp(1.7rem, 6vw, 2.3rem); font-variant-numeric: tabular-nums; text-align: right; line-height: 1.1; }
+.total .sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 24px; color: var(--muted); font-size: 0.92rem; }
+.total .sub b { font-family: var(--f-mono); font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+.newlist { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.newlist input[type=text] { flex: 1 1 200px; }
+.status { min-height: 1.2em; font-size: 0.88rem; color: var(--danger); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Wohnungsplaner</h1>
+    <p>Kriterien, Wunschliste und Einkaufsliste für den Umzug 2027.</p>
+  </header>
+
+  <div>
+    <div class="tabbar">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Listen"></div>
+      <button class="addtab" id="open-new" type="button">+ Neue Liste</button>
+    </div>
+  </div>
+
+  <form class="newlist" id="new-list" hidden>
+    <input type="text" id="new-name" placeholder="Name der Liste, z. B. Besichtigungen" maxlength="60" aria-label="Name der neuen Liste">
+    <select id="new-type" aria-label="Art der Liste">
+      <option value="check">Checkliste</option>
+      <option value="preis">Preisliste mit Summe</option>
+    </select>
+    <button class="btn primary" type="submit">Anlegen</button>
+    <button class="btn" type="button" id="cancel-new">Abbrechen</button>
+  </form>
+
+  <section class="panel" id="panel" aria-live="polite">
+    <div class="panel-head">
+      <h2 id="ph-name">Listen werden geladen</h2>
+      <span class="meta" id="ph-meta"></span>
+    </div>
+    <div class="bar" id="bar" hidden><i id="bar-i"></i></div>
+
+    <details class="menu" id="menu" hidden>
+      <summary>Liste umbenennen oder löschen</summary>
+      <form class="menu-body" id="rename-form">
+        <input type="text" id="rename-input" maxlength="60" aria-label="Listenname">
+        <button class="btn small primary" type="submit">Speichern</button>
+        <button class="btn small danger" type="button" id="del-list">Liste löschen</button>
+      </form>
+    </details>
+
+    <form class="addform" id="add-form" hidden>
+      <input class="field" type="text" id="add-text" maxlength="200" autocomplete="off" aria-label="Neuer Eintrag" placeholder="Neuer Eintrag">
+      <input class="field num" type="text" id="add-qty" inputmode="numeric" autocomplete="off" aria-label="Menge" placeholder="Menge" value="1" hidden>
+      <input class="field num" type="text" id="add-price" inputmode="decimal" autocomplete="off" aria-label="Einzelpreis in Euro" placeholder="Preis €" hidden>
+      <button class="btn primary" type="submit">Hinzufügen</button>
+    </form>
+
+    <div class="search" id="search-wrap" hidden>
+      <input class="field" type="search" id="search" autocomplete="off" aria-label="In dieser Liste suchen" placeholder="Suchen, zum Beispiel Kommode">
+      <span class="meta" id="search-meta"></span>
+    </div>
+
+    <div id="note"></div>
+    <ul class="rows" id="rows"></ul>
+    <div id="total"></div>
+    <div class="status" id="status" role="status"></div>
+    <div class="meta" id="diag"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+  var fmtShort = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+  var lists = [], items = [], active = null, query = '';
+  var loaded = { l: false, i: false }, unreachable = false, pending = false, memMode = false;
+  var db = null, confirmDelete = false;
+
+  function h(tag, props) {
+    var e = document.createElement(tag), k, v;
+    props = props || {};
+    for (k in props) {
+      v = props[k];
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = v;
+      else if (k === 'value' || k === 'checked') e[k] = v;
+      else if (k.indexOf('on') === 0) e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, '');
+      else if (v !== false && v != null) e.setAttribute(k, v);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      e.append(c.nodeType ? c : document.createTextNode(c));
+    }
+    return e;
+  }
+
+  function parseNum(s) {
+    s = String(s == null ? '' : s).trim().replace(/[€\s]/g, '');
+    if (!s) return 0;
+    if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    var n = parseFloat(s);
+    return isFinite(n) && n >= 0 ? n : 0;
+  }
+  function numText(n) { return n ? String(n).replace('.', ',') : ''; }
+  function norm(s) { return String(s || '').toLowerCase().replace(/ß/g, 'ss').normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+  function autosize(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
+  window.addEventListener('resize', function () { document.querySelectorAll('#rows textarea').forEach(autosize); });
+
+  function fail() { $('status').textContent = 'Das konnte nicht gespeichert werden. Bitte versuche es noch einmal.'; }
+  function ok() { $('status').textContent = ''; }
+
+  /* ---------- Speicher: db oder (Notfall) Arbeitsspeicher ---------- */
+  var api = {};
+  function memId() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function setupMem() {
+    memMode = true;
+    lists = [
+      { id: 'pflicht', name: 'Pflicht', typ: 'check', pos: 1 },
+      { id: 'wunsch', name: 'Wünschenswert', typ: 'check', pos: 2 },
+      { id: 'einkauf', name: 'Einkaufsliste', typ: 'preis', pos: 3 }
+    ];
+    items = [];
+    loaded.l = loaded.i = true;
+    api.addList = function (d) { var id = memId(); lists.push(Object.assign({ id: id }, d)); schedule(); return Promise.resolve(id); };
+    api.updateList = function (id, p) { lists = lists.map(function (l) { return l.id === id ? Object.assign({}, l, p) : l; }); schedule(); return Promise.resolve(); };
+    api.deleteList = function (id) { lists = lists.filter(function (l) { return l.id !== id; }); items = items.filter(function (i) { return i.liste !== id; }); schedule(); return Promise.resolve(); };
+    api.addItem = function (d) { items.push(Object.assign({ id: memId() }, d)); schedule(); return Promise.resolve(); };
+    api.updateItem = function (id, p) { items = items.map(function (i) { return i.id === id ? Object.assign({}, i, p) : i; }); schedule(); return Promise.resolve(); };
+    api.deleteItem = function (id) { items = items.filter(function (i) { return i.id !== id; }); schedule(); return Promise.resolve(); };
+  }
+  function setupDb() {
+    api.addList = function (d) { var ref = db.collection('listen').doc(); return ref.set(d).then(function () { return ref.id; }); };
+    api.updateList = function (id, p) { return db.collection('listen').doc(id).update(p); };
+    api.deleteList = function (id) {
+      var mine = items.filter(function (i) { return i.liste === id; });
+      return Promise.all(mine.map(function (i) { return db.collection('eintraege').doc(i.id).delete(); }))
+        .then(function () { return db.collection('listen').doc(id).delete(); });
+    };
+    api.addItem = function (d) { return db.collection('eintraege').add(d); };
+    api.updateItem = function (id, p) { return db.collection('eintraege').doc(id).update(p); };
+    api.deleteItem = function (id) { return db.collection('eintraege').doc(id).delete(); };
+
+    var timer = setTimeout(function () { unreachable = true; schedule(); }, 10000);
+    function done(snap) { if (!snap.metadata.fromCache) { clearTimeout(timer); unreachable = false; } }
+    function onErr() { clearTimeout(timer); unreachable = true; loaded.l = loaded.i = true; schedule(); }
+    db.collection('listen').orderBy('pos').onSnapshot(function (s) {
+      lists = s.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+      loaded.l = true; done(s); schedule();
+    }, onErr);
+    db.collection('eintraege').orderBy('ts').onSnapshot(function (s) {
+      items = s.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+      loaded.i = true; done(s); schedule();
+    }, onErr);
+  }
+
+  /* ---------- Rechnen ---------- */
+  function sums(id) {
+    var tot = 0, bought = 0, n = 0, ex = 0;
+    items.forEach(function (it) {
+      if (it.liste !== id) return;
+      if (it.beispiel) { ex++; return; }
+      var s = (+it.menge || 0) * (+it.preis || 0);
+      tot += s; if (it.erledigt) bought += s; n++;
+    });
+    return { tot: tot, bought: bought, open: tot - bought, n: n, ex: ex };
+  }
+  function listItems(id) { return items.filter(function (i) { return i.liste === id; }); }
+  function current() { return lists.filter(function (l) { return l.id === active; })[0]; }
+
+  /* ---------- Darstellung ---------- */
+  function schedule() {
+    var a = document.activeElement;
+    if (a && a.matches && a.matches('#rows input[type=text], #rows textarea')) { pending = true; return; }
+    render();
+  }
+  $('rows').addEventListener('focusout', function () { setTimeout(function () { if (pending) render(); }, 0); });
+
+  function render() {
+    pending = false;
+    var a = document.activeElement, fid = a && a.dataset ? a.dataset.fid : null;
+    if (!current()) {
+      var saved = null;
+      try { saved = localStorage.getItem('wp-tab'); } catch (e) {}
+      active = lists.some(function (l) { return l.id === saved; }) ? saved : (lists[0] ? lists[0].id : null);
+    }
+    renderTabs();
+    renderPanel();
+    $('diag').textContent = loaded.l ? (lists.length + ' Listen und ' + items.length + ' Einträge geladen') : '';
+    if (fid && /:c$/.test(fid)) {
+      var t = document.querySelector('[data-fid="' + fid + '"]');
+      if (t) t.focus();
+    }
+  }
+
+  function renderTabs() {
+    var box = $('tabs');
+    box.replaceChildren.apply(box, lists.map(function (l) {
+      var label;
+      if (l.typ === 'preis') label = fmtShort.format(sums(l.id).tot);
+      else label = String(listItems(l.id).length);
+      return h('button', {
+        class: 'tab', type: 'button', role: 'tab', 'aria-selected': l.id === active ? 'true' : 'false',
+        onclick: function () {
+          active = l.id; confirmDelete = false; query = ''; $('search').value = '';
+          try { localStorage.setItem('wp-tab', l.id); } catch (e) {}
+          $('status').textContent = '';
+          render();
+        }
+      }, l.name || 'Liste', h('span', { class: 'n', text: label }));
+    }));
+  }
+
+  function renderPanel() {
+    var l = current(), rows = $('rows'), note = $('note'), total = $('total');
+    note.replaceChildren(); total.replaceChildren(); rows.replaceChildren();
+
+    if (unreachable && !memMode) {
+      note.append(h('div', { class: 'note warn', text: 'Die gespeicherten Listen sind gerade nicht erreichbar. Sie erscheinen, sobald die Verbindung steht.' }));
+    } else if (memMode) {
+      note.append(h('div', { class: 'note warn', text: 'In dieser Ansicht wird nichts dauerhaft gespeichert. Öffne die Seite in deinem Konto, damit deine Listen erhalten bleiben.' }));
+    }
+
+    if (!l) {
+      $('ph-name').textContent = loaded.l ? 'Noch keine Listen' : 'Listen werden geladen';
+      $('ph-meta').textContent = '';
+      $('bar').hidden = true; $('menu').hidden = true; $('add-form').hidden = true; $('search-wrap').hidden = true;
+      if (loaded.l) {
+        rows.append(h('li', { class: 'empty' },
+          h('strong', { text: 'Lege deine ersten Listen an' }),
+          'Pflicht, Wünschenswert und Einkaufsliste mit Summe. Eigene Listen kannst du jederzeit ergänzen.',
+          h('div', {}, h('button', { class: 'btn primary', type: 'button', onclick: createDefaults }, 'Drei Standardlisten anlegen'))
+        ));
+      }
+      return;
+    }
+
+    var isPreis = l.typ === 'preis', mine = listItems(l.id);
+    $('ph-name').textContent = l.name || 'Liste';
+    $('menu').hidden = false;
+    if (document.activeElement !== $('rename-input')) $('rename-input').value = l.name || '';
+    var del = $('del-list');
+    del.textContent = confirmDelete ? 'Wirklich löschen? Alle Einträge gehen verloren.' : 'Liste löschen';
+
+    var form = $('add-form');
+    form.hidden = false; $('search-wrap').hidden = false;
+    form.className = 'addform' + (isPreis ? ' preis' : '');
+    $('add-qty').hidden = !isPreis; $('add-price').hidden = !isPreis;
+    $('add-text').placeholder = isPreis ? 'Was brauchst du? z. B. Sofa' : 'Neuer Punkt hinzufügen';
+
+    var s = sums(l.id);
+    if (isPreis) {
+      $('ph-meta').textContent = s.n + (s.n === 1 ? ' Position' : ' Positionen');
+      $('bar').hidden = true;
+      if (s.ex > 0) {
+        note.append(h('div', { class: 'note' },
+          h('span', { text: 'Die markierten Zeilen sind Beispiele. Sie zählen nicht zur Summe. Sobald du eine Zeile änderst, wird sie zu deinem Eintrag.' }),
+          h('button', { class: 'btn small', type: 'button', onclick: removeExamples }, 'Beispiele entfernen')
+        ));
+      }
+    } else {
+      var done = mine.filter(function (i) { return i.erledigt; }).length;
+      $('ph-meta').textContent = mine.length ? done + ' von ' + mine.length + ' abgehakt' : '';
+      $('bar').hidden = !mine.length;
+      $('bar-i').style.width = mine.length ? Math.round(done / mine.length * 100) + '%' : '0';
+    }
+
+    if (!loaded.i) { rows.append(h('li', { class: 'empty', text: 'Einträge werden geladen …' })); return; }
+
+    if (!mine.length) {
+      rows.append(h('li', { class: 'empty' },
+        h('strong', { text: 'Diese Liste ist noch leer' }),
+        isPreis ? 'Trag oben ein, was du kaufen willst, mit Menge und Preis.' : 'Schreib oben den ersten Punkt hinein.'
+      ));
+    }
+    var q = norm(query), shown = q ? mine.filter(function (it) { return norm(it.text).indexOf(q) > -1; }) : mine;
+    $('search-meta').textContent = q ? (shown.length + ' Treffer' + (isPreis ? ' · Die Summe unten gilt für die ganze Liste' : '')) : '';
+    if (q && !shown.length && mine.length) {
+      rows.append(h('li', { class: 'empty' }, h('strong', { text: 'Nichts gefunden' }), 'Zu „' + query.trim() + '“ gibt es keinen Eintrag in dieser Liste.'));
+    }
+    shown.forEach(function (it) { rows.append(isPreis ? priceRow(it) : checkRow(it)); });
+    rows.querySelectorAll('textarea').forEach(autosize);
+
+    if (isPreis) {
+      total.append(h('div', { class: 'total' },
+        h('span', { class: 'lbl', text: 'Gesamtsumme' }),
+        h('span', { class: 'big', text: fmt.format(s.tot) }),
+        h('div', { class: 'sub' },
+          h('span', {}, 'Schon gekauft ', h('b', { text: fmt.format(s.bought) })),
+          h('span', {}, 'Noch offen ', h('b', { text: fmt.format(s.open) }))
+        )
+      ));
+    }
+  }
+
+  function patch(it, p) {
+    if (it.beispiel) p.beispiel = false;
+    ok();
+    return api.updateItem(it.id, p).catch(fail);
+  }
+  function delBtn(it) {
+    return h('button', { class: 'del c-del', type: 'button', 'aria-label': 'Eintrag löschen', title: 'Löschen', 'data-fid': it.id + ':d',
+      onclick: function () { ok(); api.deleteItem(it.id).catch(fail); } }, '×');
+  }
+  function textInput(it, cls, field, cap) {
+    var isText = field === 'text';
+    return h(isText ? 'textarea' : 'input', Object.assign(isText ? {
+      rows: 1, wrap: 'off',
+      onkeydown: function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); ev.target.blur(); } },
+      oninput: function (ev) { autosize(ev.target); }
+    } : { type: 'text' }, { class: 'txt ' + cls, value: isText ? (it.text || '') : numText(it[field]), maxlength: 200,
+      'aria-label': cap, 'data-fid': it.id + ':' + field,
+      onchange: function (ev) {
+        var v = ev.target.value.trim();
+        if (field === 'text') {
+          if (!v) { ev.target.value = it.text || ''; return; }
+          patch(it, { text: v });
+        } else if (field === 'menge') {
+          var q = Math.max(1, Math.round(parseNum(v)) || 1);
+          ev.target.value = String(q); patch(it, { menge: q });
+        } else {
+          var p = parseNum(v);
+          ev.target.value = numText(p); patch(it, { preis: p });
+        }
+      } }));
+  }
+  function checkBox(it) {
+    return h('input', { class: 'chk c-chk', type: 'checkbox', checked: !!it.erledigt, 'aria-label': 'Abhaken', 'data-fid': it.id + ':c',
+      onchange: function (ev) { patch(it, { erledigt: ev.target.checked }); } });
+  }
+  function checkRow(it) {
+    return h('li', { class: 'row check' + (it.erledigt ? ' done' : '') }, checkBox(it), textInput(it, '', 'text', 'Eintrag'), delBtn(it));
+  }
+  function priceRow(it) {
+    var sum = (+it.menge || 0) * (+it.preis || 0);
+    return h('li', { class: 'row preis' + (it.erledigt ? ' done' : '') },
+      checkBox(it),
+      h('div', { class: 'cell c-name' }, textInput(it, 'name', 'text', 'Name'), it.beispiel ? h('span', { class: 'ex', text: 'Beispiel' }) : null),
+      h('label', { class: 'cell c-qty' }, h('span', { class: 'cap', text: 'Menge' }), textInput(it, 'num', 'menge', 'Menge')),
+      h('label', { class: 'cell c-price' }, h('span', { class: 'cap', text: 'Preis €' }), textInput(it, 'num', 'preis', 'Einzelpreis in Euro')),
+      h('div', { class: 'cell c-sum' }, h('span', { class: 'cap', text: 'Summe' }), h('span', { class: 'sum', text: fmt.format(sum) })),
+      delBtn(it)
+    );
+  }
+
+  /* ---------- Aktionen ---------- */
+  function createDefaults() {
+    var now = Date.now();
+    api.addList({ name: 'Pflicht', typ: 'check', pos: now })
+      .then(function () { return api.addList({ name: 'Wünschenswert', typ: 'check', pos: now + 1 }); })
+      .then(function () { return api.addList({ name: 'Einkaufsliste', typ: 'preis', pos: now + 2 }); })
+      .catch(fail);
+  }
+  function removeExamples() {
+    var ex = items.filter(function (i) { return i.liste === active && i.beispiel; });
+    Promise.all(ex.map(function (i) { return api.deleteItem(i.id); })).catch(fail);
+  }
+
+  $('search').addEventListener('input', function (e) { query = e.target.value; render(); });
+
+  $('add-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var l = current(); if (!l) return;
+    var text = $('add-text').value.trim(); if (!text) return;
+    var d = { liste: l.id, text: text, erledigt: false, ts: Date.now() };
+    if (l.typ === 'preis') {
+      d.menge = Math.max(1, Math.round(parseNum($('add-qty').value)) || 1);
+      d.preis = parseNum($('add-price').value);
+    }
+    $('add-text').value = ''; $('add-price').value = ''; $('add-qty').value = '1';
+    $('add-text').focus();
+    ok();
+    api.addItem(d).catch(fail);
+  });
+
+  $('rename-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var l = current(), v = $('rename-input').value.trim();
+    if (!l || !v) return;
+    ok(); api.updateList(l.id, { name: v }).catch(fail);
+  });
+  $('del-list').addEventListener('click', function () {
+    var l = current(); if (!l) return;
+    if (!confirmDelete) { confirmDelete = true; $('del-list').textContent = 'Wirklich löschen? Alle Einträge gehen verloren.'; return; }
+    confirmDelete = false; ok();
+    api.deleteList(l.id).then(function () { active = null; render(); }).catch(fail);
+  });
+
+  $('open-new').addEventListener('click', function () { $('new-list').hidden = false; $('new-name').focus(); });
+  $('cancel-new').addEventListener('click', function () { $('new-list').hidden = true; });
+  $('new-list').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('new-name').value.trim(); if (!name) return;
+    ok();
+    api.addList({ name: name, typ: $('new-type').value, pos: Date.now() }).then(function (id) {
+      active = id;
+      try { localStorage.setItem('wp-tab', id); } catch (er) {}
+      $('new-name').value = ''; $('new-list').hidden = true; render();
+    }).catch(fail);
+  });
+
+  /* ---------- Start ---------- */
+  render();
+  var cl = window.claude && window.claude.use ? window.claude.use('db') : Promise.resolve(null);
+  cl.then(function (d) {
+    if (d) { db = d; setupDb(); } else { setupMem(); render(); }
+  }).catch(function () { setupMem(); render(); });
+})();
+</script>
+
+</body></html>
