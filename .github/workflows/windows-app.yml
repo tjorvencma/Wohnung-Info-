@@ -1,0 +1,43 @@
+name: Windows-App bauen
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/windows-app.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Abhängigkeiten installieren
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Windows-App bauen
+        working-directory: desktop
+        run: npm run build
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Dateien ansehen
+        shell: bash
+        run: ls -la desktop/dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Wohnungsplaner-Windows
+          retention-days: 90
+          path: |
+            desktop/dist/Wohnungsplaner-Setup.exe
+            desktop/dist/Wohnungsplaner-Portable.exe
